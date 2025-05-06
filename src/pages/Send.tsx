@@ -290,8 +290,22 @@ const Send: React.FC = () => {
     }
   }, [feeInfo]);
   
+  // Add debugging for button clicks
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (stage !== 'form' && stage !== 'complete') {
+        // Prevent accidental page refresh during transaction flow
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [stage]);
+  
   // Remove the automatic fee estimation on field changes
-  // Automatically estimate fee when recipient and amount are provided
   useEffect(() => {
     // Reset form error when inputs change
     setFormError(null);
@@ -318,7 +332,7 @@ const Send: React.FC = () => {
   // Step 1: First only estimate the fee and show confirmation
   const handleSubmit = async (e?: React.FormEvent) => {
     // Prevent default if event is provided
-    if (e && e.preventDefault) {
+    if (e) {
       e.preventDefault();
     }
     
@@ -550,7 +564,7 @@ const Send: React.FC = () => {
           <FormCard>
             <FormSubtitle>Send SUP tokens to any wallet address</FormSubtitle>
             
-            <div>
+            <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: '20px' }}>
                 <InputLabel>Send To (Address)</InputLabel>
                 <Input
@@ -562,39 +576,48 @@ const Send: React.FC = () => {
                   onFocus={() => setShowContacts(true)}
                 />
                 
+                {/* Contacts dropdown */}
                 {showContacts && (
-                  <div style={{ 
-                    marginTop: '8px', 
-                    background: '#1a1a1a', 
+                  <div style={{
+                    position: 'absolute',
+                    zIndex: 10,
+                    width: 'calc(100% - 48px)',
+                    maxHeight: '250px',
+                    overflowY: 'auto',
+                    backgroundColor: '#1a1a1a',
                     borderRadius: '8px',
-                    padding: '12px',
-                    maxHeight: '200px',
-                    overflowY: 'auto'
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
+                    marginTop: '4px'
                   }}>
+                    <div style={{ padding: '12px', borderBottom: '1px solid #333' }}>
+                      <Input
+                        placeholder="Search contacts..."
+                        value={contactSearch}
+                        onChange={(e) => setContactSearch(e.target.value)}
+                        icon={<Search />}
+                        autoFocus
+                        fullWidth
+                      />
+                    </div>
+                    
                     {filteredContacts.length > 0 ? (
-                      filteredContacts.map(contact => (
+                      filteredContacts.map((contact) => (
                         <div 
-                          key={contact.id}
-                          style={{ 
-                            padding: '8px 12px',
+                          key={contact.address}
+                          style={{
+                            padding: '12px 16px',
+                            borderBottom: '1px solid #333',
                             cursor: 'pointer',
-                            borderRadius: '4px',
-                            marginBottom: '4px'
+                            transition: 'background-color 0.1s'
                           }}
                           onClick={() => handleContactSelect(contact.address)}
                         >
                           <div style={{ fontWeight: 500 }}>{contact.name}</div>
-                          <div style={{ 
-                            fontSize: '12px', 
-                            color: '#999',
-                            fontFamily: 'monospace'
-                          }}>
-                            {formatAddress(contact.address)}
-                          </div>
+                          <div style={{ fontSize: '12px', opacity: 0.7 }}>{formatAddress(contact.address)}</div>
                         </div>
                       ))
                     ) : (
-                      <div style={{ textAlign: 'center', padding: '12px' }}>
+                      <div style={{ padding: '16px', textAlign: 'center', opacity: 0.7 }}>
                         No contacts found
                       </div>
                     )}
@@ -629,15 +652,14 @@ const Send: React.FC = () => {
               )}
               
               <Button 
-                type="button" 
+                type="submit" 
                 fullWidth 
                 size="large"
                 disabled={loading || !amount || !to}
-                onClick={handleSubmit}
               >
                 {loading ? 'Preparing...' : 'Continue'}
               </Button>
-            </div>
+            </form>
           </FormCard>
         )}
         
@@ -966,4 +988,4 @@ const Send: React.FC = () => {
   );
 };
 
-export default Send; 
+export default Send;        
