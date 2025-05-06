@@ -146,61 +146,6 @@ export const walletApi = {
   },
 
   /**
-   * Send transaction - handles the full process of creating, signing, and sending
-   * @param from Sender address
-   * @param to Recipient address
-   * @param amount Amount to send
-   * @param mnemonic Mnemonic phrase for signing (should be handled securely)
-   * @returns Transaction receipt
-   */
-  sendTransaction: async (from: string, to: string, amount: number, mnemonic: string) => {
-    try {
-      if (!from || !to || amount <= 0) {
-        throw new Error('Valid from, to addresses and amount > 0 are required');
-      }
-      
-      if (!mnemonic) {
-        throw new Error('Mnemonic is required for signing');
-      }
-      
-      // Step 1: Get the current nonce for the account
-      const nonce = 0; // Normally you would get this from the blockchain
-      
-      // Step 2: Create an unsigned transaction
-      const unsignedTx = await walletRpc.createUnsignedTransaction(
-        from, 
-        to, 
-        amount
-      );
-      
-      // Step 3: Sign the transaction using the mnemonic
-      const signedTx = await walletRpc.signTransaction(mnemonic, unsignedTx);
-      
-      // Step 4: Send the signed transaction
-      const sentTx = await walletRpc.sendTransaction({
-        from,
-        to, 
-        amount,
-        gasPrice: unsignedTx.gasPrice || 20,
-        gasLimit: unsignedTx.gasLimit || 21000,
-        timestamp: Math.floor(Date.now() / 1000),
-        nonce,
-        signature: signedTx.signature,
-        publicKey: signedTx.publicKey,
-        transactionId: signedTx.transactionId
-      });
-      
-      return {
-        txid: sentTx.transactionId,
-        status: sentTx.status
-      };
-    } catch (error: any) {
-      console.error('Error sending transaction:', error.message);
-      throw new Error(`Failed to send transaction: ${error.message}`);
-    }
-  },
-
-  /**
    * Estimate transaction fee
    * @param from Sender address
    * @param to Recipient address
@@ -316,6 +261,43 @@ export const walletApi = {
     } catch (error: any) {
       console.error('Error checking transaction status:', error.message);
       throw new Error(`Failed to check transaction status: ${error.message}`);
+    }
+  },
+
+  /**
+   * Send transaction with wallet key - direct RPC method that combines transaction creation and signing
+   * @param from Sender address
+   * @param to Recipient address
+   * @param amount Amount to send
+   * @param gasPrice Gas price
+   * @param gasLimit Gas limit
+   * @param mnemonic Mnemonic phrase for signing
+   * @returns Transaction receipt with transaction ID and status
+   */
+  sendTransactionWithKey: async (from: string, to: string, amount: number, gasPrice: number, gasLimit: number, mnemonic: string) => {
+    try {
+      if (!from || !to || amount <= 0) {
+        throw new Error('Valid from, to addresses and amount > 0 are required');
+      }
+      
+      if (!mnemonic) {
+        throw new Error('Mnemonic is required for signing');
+      }
+      
+      // Call the RPC method directly
+      const result = await walletRpc.sendTransactionWithKey({
+        from,
+        to,
+        amount,
+        gasPrice,
+        gasLimit,
+        mnemonic
+      });
+      
+      return result;
+    } catch (error: any) {
+      console.error('Error sending transaction with key:', error.message);
+      throw new Error(`Failed to send transaction: ${error.message}`);
     }
   },
 };

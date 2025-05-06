@@ -18,6 +18,8 @@ import Dashboard from './pages/Dashboard';
 import Send from './pages/Send';
 import Receive from './pages/Receive';
 import Request from './pages/Request';
+import ConfirmGas from './pages/ConfirmGas';
+import SignTransaction from './pages/SignTransaction';
 
 // Layout components
 import PrivateRoute from './components/PrivateRoute';
@@ -47,6 +49,16 @@ const App: React.FC = () => {
                   <Route path="/send" element={
                     <PrivateRoute>
                       <Send />
+                    </PrivateRoute>
+                  } />
+                  <Route path="/confirmgas" element={
+                    <PrivateRoute>
+                      <ConfirmGas />
+                    </PrivateRoute>
+                  } />
+                  <Route path="/signTransaction" element={
+                    <PrivateRoute>
+                      <SignTransaction />
                     </PrivateRoute>
                   } />
                   <Route path="/receive" element={

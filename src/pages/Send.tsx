@@ -283,6 +283,42 @@ const Send: React.FC = () => {
     debugLog(`Stage changed to: ${stage}`);
   }, [stage]);
   
+  // Check URL parameters on load to see if we're returning from confirmgas with transaction data
+  useEffect(() => {
+    const stageParam = query.get('stage');
+    const unsignedTxParam = query.get('unsignedTx');
+    const feeParam = query.get('fee');
+    
+    // If we have transaction data in URL, set the appropriate stage
+    if (stageParam === 'transaction-review' && unsignedTxParam && to && amount && feeParam) {
+      try {
+        debugLog('Found transaction data in URL parameters');
+        // Parse the unsigned transaction
+        const parsedUnsignedTx = JSON.parse(unsignedTxParam);
+        
+        // Create fee info object from URL params
+        const parsedFeeInfo = {
+          fee: parseFloat(feeParam),
+          gasPrice: parseInt(query.get('gasPrice') || '20', 10),
+          gasLimit: parseInt(query.get('gasLimit') || '21000', 10)
+        };
+        
+        // Set the state values
+        setUnsignedTx(parsedUnsignedTx);
+        setFeeInfo(parsedFeeInfo);
+        
+        // Set the appropriate stage
+        setTimeout(() => {
+          setStage('transaction-review');
+        }, 100);
+      } catch (err) {
+        console.error('Error parsing transaction data from URL:', err);
+        showToast('Error loading transaction data', 'error');
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
   // Track feeInfo changes
   useEffect(() => {
     if (feeInfo) {
@@ -358,7 +394,6 @@ const Send: React.FC = () => {
     try {
       // Only estimate the fee in this step
       debugLog(`Estimating fee for transaction from ${wallet?.address} to ${to} for ${amount} SUP`);
-      setStage('fee-estimate');
       
       // Clear any previous fee info
       setFeeInfo(null);
@@ -371,20 +406,24 @@ const Send: React.FC = () => {
         throw new Error('Fee information is missing from the response');
       }
       
-      // Set fee info in state
-      setFeeInfo(feeData);
+      // Instead of updating the stage, redirect to the confirmgas page with all necessary data
+      const params = new URLSearchParams({
+        from: wallet?.address || '',
+        to,
+        amount,
+        fee: feeData.fee.toString(),
+        gasPrice: (feeData.gasPrice || 20).toString(),
+        gasLimit: (feeData.gasLimit || 21000).toString(),
+        utxos: JSON.stringify(feeData.utxos || [])
+      });
       
-      // Important: Wait for state update to complete before changing stage
-      // Use setTimeout to ensure state update has happened
-      setTimeout(() => {
-        debugLog('Moving to fee confirmation stage');
-        setStage('fee-confirmation');
-      }, 100);
+      // Navigate to the gas confirmation page
+      navigate(`/confirmgas?${params.toString()}`);
+      
     } catch (err: any) {
       console.error('Error estimating fee:', err);
       debugLog('Fee estimation error', err);
       setFormError(err.message || 'Failed to estimate transaction fee');
-      setStage('form');
     }
   };
   
@@ -573,56 +612,72 @@ const Send: React.FC = () => {
                   onChange={(e) => setTo(e.target.value)}
                   icon={<User />}
                   fullWidth
-                  onFocus={() => setShowContacts(true)}
                 />
                 
-                {/* Contacts dropdown */}
-                {showContacts && (
-                  <div style={{
-                    position: 'absolute',
-                    zIndex: 10,
-                    width: 'calc(100% - 48px)',
-                    maxHeight: '250px',
-                    overflowY: 'auto',
-                    backgroundColor: '#1a1a1a',
-                    borderRadius: '8px',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
-                    marginTop: '4px'
-                  }}>
-                    <div style={{ padding: '12px', borderBottom: '1px solid #333' }}>
-                      <Input
-                        placeholder="Search contacts..."
-                        value={contactSearch}
-                        onChange={(e) => setContactSearch(e.target.value)}
-                        icon={<Search />}
-                        autoFocus
-                        fullWidth
-                      />
-                    </div>
-                    
-                    {filteredContacts.length > 0 ? (
-                      filteredContacts.map((contact) => (
-                        <div 
-                          key={contact.address}
-                          style={{
-                            padding: '12px 16px',
-                            borderBottom: '1px solid #333',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.1s'
-                          }}
-                          onClick={() => handleContactSelect(contact.address)}
-                        >
-                          <div style={{ fontWeight: 500 }}>{contact.name}</div>
-                          <div style={{ fontSize: '12px', opacity: 0.7 }}>{formatAddress(contact.address)}</div>
-                        </div>
-                      ))
-                    ) : (
-                      <div style={{ padding: '16px', textAlign: 'center', opacity: 0.7 }}>
-                        No contacts found
+                {/* Search contacts section - now between SendTo and Amount */}
+                <div style={{ 
+                  marginTop: '12px', 
+                  marginBottom: '12px', 
+                  display: 'flex', 
+                  flexDirection: 'column' 
+                }}>
+                  <Button 
+                    variant="outlined" 
+                    onClick={() => setShowContacts(!showContacts)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    size="small"
+                  >
+                    <Search style={{ marginRight: '8px' }} size={16} />
+                    Search Contacts
+                  </Button>
+                  
+                  {/* Contacts dropdown - shows only when search button is clicked */}
+                  {showContacts && (
+                    <div style={{
+                      zIndex: 10,
+                      width: '100%',
+                      maxHeight: '250px',
+                      overflowY: 'auto',
+                      backgroundColor: '#1a1a1a',
+                      borderRadius: '8px',
+                      boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
+                      marginTop: '4px'
+                    }}>
+                      <div style={{ padding: '12px', borderBottom: '1px solid #333' }}>
+                        <Input
+                          placeholder="Search contacts..."
+                          value={contactSearch}
+                          onChange={(e) => setContactSearch(e.target.value)}
+                          icon={<Search />}
+                          autoFocus
+                          fullWidth
+                        />
                       </div>
-                    )}
-                  </div>
-                )}
+                      
+                      {filteredContacts.length > 0 ? (
+                        filteredContacts.map((contact) => (
+                          <div 
+                            key={contact.address}
+                            style={{
+                              padding: '12px 16px',
+                              borderBottom: '1px solid #333',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.1s'
+                            }}
+                            onClick={() => handleContactSelect(contact.address)}
+                          >
+                            <div style={{ fontWeight: 500 }}>{contact.name}</div>
+                            <div style={{ fontSize: '12px', opacity: 0.7 }}>{formatAddress(contact.address)}</div>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ padding: '16px', textAlign: 'center', opacity: 0.7 }}>
+                          No contacts found
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               
               <InputWithCurrency>

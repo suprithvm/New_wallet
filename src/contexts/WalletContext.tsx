@@ -24,7 +24,7 @@ interface WalletContextType {
   createUnsignedTransaction: (to: string, amount: number, gasPrice?: number, gasLimit?: number) => Promise<any>;
   signTransaction: (unsignedTx: any) => Promise<any>;
   sendSignedTransaction: (signedTx: any) => Promise<any>;
-  sendTransaction: (to: string, amount: number) => Promise<any>;
+  sendTransactionWithKey: (to: string, amount: number, gasPrice: number, gasLimit: number) => Promise<any>;
   pollTransactionStatus: (txId: string, callback: (status: string, tx: any) => void) => Promise<void>;
   disconnectWallet: () => void;
 }
@@ -414,8 +414,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  // Send transaction
-  const sendTransaction = async (to: string, amount: number): Promise<any> => {
+  // Send transaction with key
+  const sendTransactionWithKey = async (to: string, amount: number, gasPrice: number, gasLimit: number): Promise<any> => {
     try {
       setLoading(true);
       setError(null);
@@ -424,7 +424,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw new Error('No wallet address');
       }
       
-      // Get mnemonic from localStorage for signing
+      // Get mnemonic from localStorage
       const walletData = localStorage.getItem('walletData');
       if (!walletData) {
         throw new Error('Wallet data not found in local storage');
@@ -435,7 +435,14 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw new Error('Mnemonic not found in wallet data');
       }
       
-      const result = await walletApi.sendTransaction(wallet.address, to, amount, parsedWalletData.mnemonic);
+      const result = await walletApi.sendTransactionWithKey(
+        wallet.address, 
+        to, 
+        amount, 
+        gasPrice, 
+        gasLimit, 
+        parsedWalletData.mnemonic
+      );
       
       // Refresh balance and transactions
       await fetchBalance();
@@ -500,7 +507,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     createUnsignedTransaction,
     signTransaction,
     sendSignedTransaction,
-    sendTransaction,
+    sendTransactionWithKey,
     pollTransactionStatus,
     disconnectWallet,
   };

@@ -250,6 +250,31 @@ export const walletRpc = {
   },
 
   /**
+   * Send a transaction directly with wallet key (mnemonic)
+   * This combines creating and signing the transaction in one RPC call
+   * @param params Object containing transaction details and mnemonic
+   * @returns Transaction receipt with transaction ID
+   */
+  sendTransactionWithKey: async (params: {
+    from: string;
+    to: string;
+    amount: number;
+    gasPrice: number;
+    gasLimit: number;
+    mnemonic: string;
+  }) => {
+    if (!params.from || !params.to || params.amount <= 0) {
+      throw new Error('Valid from, to addresses and amount > 0 are required');
+    }
+    
+    if (!params.mnemonic) {
+      throw new Error('Mnemonic is required for signing the transaction');
+    }
+    
+    return callRPC('sendTransactionWithKey', params);
+  },
+  
+  /**
    * Get transaction status
    * @param txId Transaction ID
    * @returns The transaction status and details
