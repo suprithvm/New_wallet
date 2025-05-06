@@ -255,8 +255,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     try {
       if (!wallet) {
         throw new Error('Wallet not initialized');
-      }
-      
+    }
+    
       const response = await walletApi.getBalance(wallet.address);
       setWallet(prev => prev ? { ...prev, balance: response.balance } : null);
       return response.balance;

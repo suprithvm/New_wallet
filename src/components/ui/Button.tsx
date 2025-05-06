@@ -43,51 +43,51 @@ const StyledButton = styled.button<ButtonProps>`
   ${({ variant, theme }) =>
     variant === 'secondary' &&
     css`
-      background-color: ${theme.colors.secondary};
+          background-color: ${theme.colors.secondary};
       color: ${theme.colors.buttonText};
       border: none;
-      
+          
       &:hover:not(:disabled) {
         background-color: ${theme.colors.primary};
-      }
-      
+          }
+          
       &:disabled {
         background-color: ${theme.colors.secondary}80;
         color: ${theme.colors.buttonText}80;
-      }
+          }
     `}
   
   ${({ variant, theme }) =>
     variant === 'outlined' &&
     css`
-      background-color: transparent;
-      color: ${theme.colors.primary};
+          background-color: transparent;
+          color: ${theme.colors.primary};
       border: 1px solid ${theme.colors.primary};
-      
+          
       &:hover:not(:disabled) {
         background-color: ${theme.colors.primary}10;
-      }
-      
+          }
+          
       &:disabled {
         color: ${theme.colors.primary}80;
         border-color: ${theme.colors.primary}80;
-      }
+          }
     `}
   
   ${({ variant, theme }) =>
     variant === 'text' &&
     css`
-      background-color: transparent;
-      color: ${theme.colors.primary};
+          background-color: transparent;
+          color: ${theme.colors.primary};
       border: none;
-      
+          
       &:hover:not(:disabled) {
         background-color: ${theme.colors.primary}10;
-      }
-      
+          }
+          
       &:disabled {
         color: ${theme.colors.primary}80;
-      }
+          }
     `}
   
   ${({ size }) =>
@@ -124,7 +124,7 @@ const StyledButton = styled.button<ButtonProps>`
     `}
 `;
 
-const Button: React.FC<ButtonProps> = ({
+const Button: React.FC<ButtonProps> = ({ 
   children,
   variant = 'primary',
   size = 'medium',
