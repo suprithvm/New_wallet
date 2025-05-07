@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { requestsApi } from '../services/api';
-import websocketService from '../services/websocket';
 import { useWallet } from './WalletContext';
+import { useSocket } from '../context/SocketContext';
 
 // Define types
 interface PaymentRequest {
@@ -34,54 +34,51 @@ const RequestsContext = createContext<RequestsContextType | null>(null);
 // Provider component
 export const RequestsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { wallet } = useWallet();
+  const { socket } = useSocket();
   const [incomingRequests, setIncomingRequests] = useState<PaymentRequest[]>([]);
   const [outgoingRequests, setOutgoingRequests] = useState<PaymentRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize and listen for wallet changes
+  // Helper to sort requests by created_at descending
+  const sortByCreatedAtDesc = (arr: PaymentRequest[]) =>
+    [...arr].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // Listen for wallet and socket changes
   useEffect(() => {
     if (wallet?.address) {
       fetchRequests();
-      
-      // Listen for new payment requests
-      const newRequestListener = websocketService.addEventListener('request:new', handleNewRequest);
-      
-      // Listen for updated payment requests
-      const updateRequestListener = websocketService.addEventListener('request:updated', handleUpdatedRequest);
-      
-      return () => {
-        newRequestListener();
-        updateRequestListener();
-      };
     }
   }, [wallet?.address]);
 
-  // Handle new payment request via WebSocket
-  const handleNewRequest = (request: PaymentRequest) => {
-    if (!wallet?.address) return;
-    
-    if (request.to_address === wallet.address) {
-      setIncomingRequests(prev => [request, ...prev]);
-    } else if (request.from_address === wallet.address) {
-      setOutgoingRequests(prev => [request, ...prev]);
-    }
-  };
+  // Listen for websocket events
+  useEffect(() => {
+    if (!socket || !wallet?.address) return;
 
-  // Handle updated payment request via WebSocket
-  const handleUpdatedRequest = (request: PaymentRequest) => {
-    if (!wallet?.address) return;
-    
-    if (request.to_address === wallet.address) {
-      setIncomingRequests(prev => 
-        prev.map(req => req.id === request.id ? request : req)
-      );
-    } else if (request.from_address === wallet.address) {
-      setOutgoingRequests(prev => 
-        prev.map(req => req.id === request.id ? request : req)
-      );
-    }
-  };
+    const handleNewRequest = (request: PaymentRequest) => {
+      if (request.to_address === wallet.address) {
+        setIncomingRequests(prev => sortByCreatedAtDesc([request, ...prev]));
+      } else if (request.from_address === wallet.address) {
+        setOutgoingRequests(prev => sortByCreatedAtDesc([request, ...prev]));
+      }
+    };
+
+    const handleUpdatedRequest = (request: PaymentRequest) => {
+      if (request.to_address === wallet.address) {
+        setIncomingRequests(prev => sortByCreatedAtDesc(prev.map(req => req.id === request.id ? request : req)));
+      } else if (request.from_address === wallet.address) {
+        setOutgoingRequests(prev => sortByCreatedAtDesc(prev.map(req => req.id === request.id ? request : req)));
+      }
+    };
+
+    socket.on('request:new', handleNewRequest);
+    socket.on('request:updated', handleUpdatedRequest);
+
+    return () => {
+      socket.off('request:new', handleNewRequest);
+      socket.off('request:updated', handleUpdatedRequest);
+    };
+  }, [socket, wallet?.address]);
 
   // Fetch all requests for the current wallet
   const fetchRequests = async (): Promise<void> => {
@@ -92,11 +89,11 @@ export const RequestsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const data = await requestsApi.getRequests(wallet.address);
       
       if (data.incoming) {
-        setIncomingRequests(data.incoming);
+        setIncomingRequests(sortByCreatedAtDesc(data.incoming));
       }
       
       if (data.outgoing) {
-        setOutgoingRequests(data.outgoing);
+        setOutgoingRequests(sortByCreatedAtDesc(data.outgoing));
       }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch payment requests');
@@ -115,7 +112,7 @@ export const RequestsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       setLoading(true);
       const newRequest = await requestsApi.createRequest(wallet.address, to_address, amount, note);
-      setOutgoingRequests(prev => [newRequest, ...prev]);
+      setOutgoingRequests(prev => sortByCreatedAtDesc([newRequest, ...prev]));
       return newRequest;
     } catch (err: any) {
       setError(err.message || 'Failed to create payment request');
@@ -133,11 +130,11 @@ export const RequestsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       // Update in state
       setIncomingRequests(prev => 
-        prev.map(req => req.id === id ? updatedRequest : req)
+        sortByCreatedAtDesc(prev.map(req => req.id === id ? updatedRequest : req))
       );
       
       setOutgoingRequests(prev => 
-        prev.map(req => req.id === id ? updatedRequest : req)
+        sortByCreatedAtDesc(prev.map(req => req.id === id ? updatedRequest : req))
       );
       
       return updatedRequest;

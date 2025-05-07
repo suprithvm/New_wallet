@@ -5,10 +5,11 @@ import { FiSend, FiDownload, FiFileText, FiPlus } from 'react-icons/fi';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { Card } from '../components/ui';
 import { useWallet } from '../contexts/WalletContext';
-import { useAddressBook } from '../contexts/AddressBookContext';
 import { useRequests } from '../contexts/RequestsContext';
 import { Send, Download, FileText, Plus } from '../utils/iconWrappers';
 import { useToast } from '../contexts/ToastContext';
+import ContactModal from '../components/ContactModal';
+import { useContacts } from '../context/ContactContext';
 
 const DashboardContainer = styled.div`
   width: 100%;
@@ -237,36 +238,86 @@ const ContactItem = styled(Card)`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 18px 20px;
+  background: #181828;
+  border: 1.5px solid #23233a;
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+  margin-bottom: 2px;
 `;
 
 const ContactIcon = styled.div`
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background-color: ${({ theme }) => theme.colors.primary};
+  background: linear-gradient(135deg, #8a2be2 0%, #4a00e0 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-weight: 500;
-  font-size: 18px;
-  margin-right: 12px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.3rem;
+  margin-right: 16px;
+  box-shadow: 0 2px 8px rgba(138,43,226,0.10);
 `;
 
 const ContactInfo = styled.div`
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 `;
 
 const ContactName = styled.div`
-  font-weight: 500;
-  margin-bottom: 4px;
+  font-weight: 600;
+  font-size: 1.13rem;
+  color: #fff;
+  margin-bottom: 2px;
 `;
 
 const ContactAddress = styled.div`
-  font-size: 13px;
-  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: 0.98rem;
+  color: #b3b3c6;
   font-family: monospace;
+  letter-spacing: 0.2px;
+`;
+
+const ContactActions = styled.div`
+  display: flex;
+  gap: 10px;
+`;
+
+const ActionBtn = styled.button`
+  background: #23233a;
+  color: #8a2be2;
+  border: 1.5px solid #282848;
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 0.98rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border 0.18s;
+  &:hover {
+    background: #8a2be2;
+    color: #fff;
+    border-color: #8a2be2;
+  }
+`;
+const DangerBtn = styled(ActionBtn)`
+  color: #e74c3c;
+  border-color: #e74c3c;
+  &:hover {
+    background: #e74c3c;
+    color: #fff;
+  }
+`;
+const SuccessBtn = styled(ActionBtn)`
+  color: #28a745;
+  border-color: #28a745;
+  &:hover {
+    background: #28a745;
+    color: #fff;
+  }
 `;
 
 const SendButton = styled.button`
@@ -291,25 +342,95 @@ const PendingList = styled.div`
 
 const PendingItem = styled(Card)`
   display: flex;
-  flex-direction: column;
-  padding: 16px;
+  align-items: flex-start;
+  background: ${({ theme }) => theme.colors.background};
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(138,43,226,0.07);
+  margin-bottom: 18px;
+  padding: 0;
+  border: none;
+  min-height: 90px;
 `;
 
-const PendingHeader = styled.div`
+const PendingIcon = styled.div<{ received?: boolean }>`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: bold;
+  margin: 24px 20px 0 24px;
+  flex-shrink: 0;
+  background: ${({ received }) => received
+    ? 'linear-gradient(135deg, #ffc107 60%, #fffbe6 100%)'
+    : 'linear-gradient(135deg, #00bcd4 60%, #e0f7fa 100%)'};
+  color: ${({ received }) => received ? '#bfae5e' : '#00bcd4'};
+  box-shadow: 0 0 8px 1px ${({ received }) => received ? '#ffc10733' : '#00bcd433'};
+`;
+
+const PendingMain = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 22px 0 18px 0;
+`;
+
+const PendingTitle = styled.div`
+  font-weight: 600;
+  font-size: 1.08rem;
+  color: #fff;
+  margin-bottom: 2px;
+`;
+
+const PendingDetails = styled.div`
+  font-size: 0.98rem;
+  color: #b3b3c6;
+  margin-bottom: 2px;
+`;
+
+const PendingNote = styled.div`
+  font-size: 0.97rem;
+  color: #b3b3c6;
+  margin-bottom: 2px;
+  font-style: italic;
+`;
+
+const PendingRight = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 8px;
+  min-width: 160px;
+  padding: 22px 24px 18px 0;
 `;
 
 const PendingAmount = styled.div`
+  font-weight: 700;
+  font-size: 1.18rem;
+  color: #fff;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+`;
+
+const PendingStatus = styled.div<{ status: string }>`
+  display: inline-block;
+  font-size: 0.93rem;
   font-weight: 500;
-  font-size: 18px;
+  margin-bottom: 8px;
+  padding: 3px 16px;
+  border-radius: 16px;
+  color: ${({ status }) => status === 'pending' ? '#bfae5e' : status === 'completed' ? '#3bb273' : status === 'rejected' ? '#c94a4a' : '#b3b3c6'};
+  background: ${({ status }) => status === 'pending' ? '#fffbe61a' : status === 'completed' ? '#e6f9f0' : status === 'rejected' ? '#faeaea' : '#23233a'};
+  border: 1px solid ${({ status }) => status === 'pending' ? '#fffbe633' : status === 'completed' ? '#b6e7d6' : status === 'rejected' ? '#f5bcbc' : '#23233a'};
 `;
 
 const PendingActions = styled.div`
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 14px;
+  margin-top: 8px;
 `;
 
 const ActivityList = styled.div`
@@ -425,12 +546,14 @@ const EmptyState = styled.div`
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { wallet, fetchBalance, loading } = useWallet();
-  const { contacts } = useAddressBook();
-  const { incomingRequests } = useRequests();
+  const { incomingRequests, outgoingRequests, updateRequestStatus } = useRequests();
   const { showToast } = useToast();
+  const { contacts, addContact, editContact, deleteContact } = useContacts();
   
   const [activeTab, setActiveTab] = useState<'contacts' | 'pending' | 'activity'>('contacts');
   const [refreshing, setRefreshing] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<{ name: string; address: string } | undefined>();
   
   // Reference to track if this is the initial mount
   const initialMount = useRef(true);
@@ -488,6 +611,44 @@ const Dashboard: React.FC = () => {
   // Format amount with token symbol
   const formatAmount = (amount: number): string => {
     return `${amount.toLocaleString()} SUP`;
+  };
+  
+  // Contacts tab handlers
+  const handleAddContact = () => {
+    setEditingContact(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleEditContact = (contact: { name: string; address: string }) => {
+    setEditingContact(contact);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveContact = (contact: { name: string; address: string }) => {
+    if (editingContact) {
+      editContact(editingContact.address, contact);
+    } else {
+      addContact(contact);
+    }
+    setIsModalOpen(false);
+  };
+  
+  // Add handler for marking as paid and canceling requests
+  const handleMarkAsPaid = async (requestId: number) => {
+    try {
+      await updateRequestStatus(requestId, 'completed');
+      showToast('Request marked as paid', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to mark as paid', 'error');
+    }
+  };
+  const handleCancelRequest = async (requestId: number) => {
+    try {
+      await updateRequestStatus(requestId, 'rejected');
+      showToast('Request canceled', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to cancel request', 'error');
+    }
   };
   
   return (
@@ -560,62 +721,101 @@ const Dashboard: React.FC = () => {
         
         {activeTab === 'contacts' && (
           <ContactsList>
-            {contacts.length === 0 ? (
-              <ActionButton onClick={() => console.log('Add contact clicked')}>
-                <Plus />
-                <ActionTitle>Add New</ActionTitle>
-                <ActionDescription>Add a new contact to your address book</ActionDescription>
-              </ActionButton>
-            ) : (
-              contacts.map((contact) => (
-                <ContactItem key={contact.id}>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <ContactIcon>{contact.name.charAt(0).toUpperCase()}</ContactIcon>
-                    <ContactInfo>
-                      <ContactName>{contact.name}</ContactName>
-                      <ContactAddress>{formatAddress(contact.address)}</ContactAddress>
-                    </ContactInfo>
-                  </div>
-                  <SendButton onClick={() => navigate(`/send?to=${contact.address}`)}>Send</SendButton>
-                </ContactItem>
-              ))
-            )}
+            <ActionButton onClick={handleAddContact}>
+              <Plus />
+              <ActionTitle>Add New</ActionTitle>
+              <ActionDescription>Add a new contact to your address book</ActionDescription>
+            </ActionButton>
+            {contacts.length > 0 && [...contacts].sort((a, b) => a.name.localeCompare(b.name)).map((contact) => (
+              <ContactItem key={contact.address}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <ContactIcon>{contact.name.charAt(0).toUpperCase()}</ContactIcon>
+                  <ContactInfo>
+                    <ContactName>{contact.name}</ContactName>
+                    <ContactAddress>{formatAddress(contact.address)}</ContactAddress>
+                  </ContactInfo>
+                </div>
+                <ContactActions>
+                  <ActionBtn onClick={() => navigate(`/send?to=${contact.address}`)}>Send</ActionBtn>
+                  <SuccessBtn onClick={() => handleEditContact(contact)}>Edit</SuccessBtn>
+                  <DangerBtn onClick={() => deleteContact(contact.address)}>Delete</DangerBtn>
+                </ContactActions>
+              </ContactItem>
+            ))}
+            <ContactModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              onSave={handleSaveContact}
+              initialContact={editingContact}
+            />
           </ContactsList>
         )}
         
         {activeTab === 'pending' && (
           <PendingList>
-            {incomingRequests.length === 0 ? (
+            {incomingRequests.length === 0 && outgoingRequests.length === 0 ? (
               <Card>
                 <p style={{ textAlign: 'center', padding: '24px' }}>
                   No pending requests
                 </p>
               </Card>
             ) : (
-              incomingRequests.map((request) => (
-                <PendingItem key={request.id}>
-                  <PendingHeader>
-                    <div>Payment Request</div>
-                    <PendingAmount>{formatAmount(request.amount)}</PendingAmount>
-                  </PendingHeader>
-                  
-                  <ActivityDetails>
-                    From: {formatAddress(request.from_address)}
-                  </ActivityDetails>
-                  
-                  {request.note && (
-                    <ActivityDetails style={{ marginTop: '8px' }}>
-                      Note: {request.note}
-                    </ActivityDetails>
-                  )}
-                  
-                  <PendingActions>
-                    <SendButton onClick={() => navigate(`/send?to=${request.from_address}&amount=${request.amount}`)}>
-                      Pay
-                    </SendButton>
-                  </PendingActions>
-                </PendingItem>
-              ))
+              <>
+                {/* Incoming Requests (Received) */}
+                {incomingRequests.map((request) => (
+                  <PendingItem key={request.id}>
+                    <PendingIcon received title="Received">⏳</PendingIcon>
+                    <PendingMain>
+                      <PendingTitle>Payment Request <span style={{ color: '#ffc107', fontWeight: 500 }}>(Received)</span></PendingTitle>
+                      <PendingDetails>From: {formatAddress(request.from_address)}</PendingDetails>
+                      {request.note && <PendingNote>Note: {request.note}</PendingNote>}
+                    </PendingMain>
+                    <PendingRight>
+                      <PendingAmount>{formatAmount(request.amount)}</PendingAmount>
+                      <PendingStatus status={request.status}>
+                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                      </PendingStatus>
+                      {request.status === 'pending' && (
+                        <PendingActions>
+                          <SendButton onClick={() => navigate(`/send?to=${request.from_address}&amount=${request.amount}`)} style={{ minWidth: 90 }}>
+                            Pay
+                          </SendButton>
+                          <SuccessBtn onClick={() => handleMarkAsPaid(request.id)} style={{ minWidth: 120 }}>
+                            Mark as Paid
+                          </SuccessBtn>
+                          <DangerBtn onClick={() => handleCancelRequest(request.id)} style={{ minWidth: 90 }}>
+                            Cancel
+                          </DangerBtn>
+                        </PendingActions>
+                      )}
+                    </PendingRight>
+                  </PendingItem>
+                ))}
+                {/* Outgoing Requests (Sent) */}
+                {outgoingRequests.map((request) => (
+                  <PendingItem key={request.id}>
+                    <PendingIcon title="Sent">📤</PendingIcon>
+                    <PendingMain>
+                      <PendingTitle>Payment Request <span style={{ color: '#00bcd4', fontWeight: 500 }}>(Sent)</span></PendingTitle>
+                      <PendingDetails>To: {formatAddress(request.to_address)}</PendingDetails>
+                      {request.note && <PendingNote>Note: {request.note}</PendingNote>}
+                    </PendingMain>
+                    <PendingRight>
+                      <PendingAmount>{formatAmount(request.amount)}</PendingAmount>
+                      <PendingStatus status={request.status}>
+                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                      </PendingStatus>
+                      {request.status === 'pending' && (
+                        <PendingActions>
+                          <DangerBtn onClick={() => handleCancelRequest(request.id)} style={{ minWidth: 90 }}>
+                            Cancel
+                          </DangerBtn>
+                        </PendingActions>
+                      )}
+                    </PendingRight>
+                  </PendingItem>
+                ))}
+              </>
             )}
           </PendingList>
         )}
@@ -629,7 +829,7 @@ const Dashboard: React.FC = () => {
               </EmptyState>
             ) : (
               wallet?.transactions?.map((tx, index) => {
-                const isSent = tx.from === wallet.address;
+                const isSent = tx.sender === wallet.address;
                 const txStatus = tx.status || 'confirmed';
                 const displayStatus = txStatus === 'confirmed' ? 'confirmed' : 
                                     txStatus === 'pending' ? 'pending' : 'failed';
@@ -650,14 +850,14 @@ const Dashboard: React.FC = () => {
                         </ActivityStatus>
                       </ActivityTitle>
                       <ActivityDetails>
-                        {isSent ? `To: ${formatAddress(tx.receiver || tx.to)}` : 
-                                 `From: ${formatAddress(tx.sender || tx.from)}`}
+                        {isSent ? `To: ${formatAddress(tx.receiver)}` : 
+                                 `From: ${formatAddress(tx.sender)}`}
                       </ActivityDetails>
                       <ActivityDate>{formattedDate}</ActivityDate>
                     </ActivityInfo>
                     <div>
                       <ActivityAmount type={txType}>
-                        {isSent ? '-' : '+'}{formatAmount(tx.amount || tx.value)}
+                        {isSent ? '-' : '+'}{formatAmount(tx.amount)}
                       </ActivityAmount>
                       <ActivityDetails style={{ textAlign: 'right', marginTop: '4px' }}>
                         {tx.blockHeight ? `Block #${tx.blockHeight}` : 'Pending'}

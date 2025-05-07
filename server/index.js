@@ -11,6 +11,7 @@ const socketIo = require('socket.io');
 const { testConnection, initDatabase } = require('./config/database');
 const winston = require('winston');
 const morgan = require('morgan');
+const requestsModel = require('./models/requests');
 
 // Configure Winston logger
 const logger = winston.createLogger({
@@ -152,5 +153,17 @@ async function startServer() {
 
 // Start the server
 startServer();
+
+// Periodically clean up expired payment requests every hour
+setInterval(async () => {
+  try {
+    const expiredCount = await requestsModel.cleanupExpiredRequests();
+    if (expiredCount > 0) {
+      logger.info(`Expired ${expiredCount} old pending payment requests.`);
+    }
+  } catch (err) {
+    logger.error('Error cleaning up expired payment requests', { error: err.message });
+  }
+}, 60 * 60 * 1000); // Every hour
 
 module.exports = { app, logger }; 

@@ -5,7 +5,7 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import { Card, Button, Input } from '../components/ui';
 import TransactionReview from '../components/ui/TransactionReview';
 import { useWallet } from '../contexts/WalletContext';
-import { useAddressBook } from '../contexts/AddressBookContext';
+import { useContacts } from '../context/ContactContext';
 import { useToast } from '../contexts/ToastContext';
 import { ArrowLeft, User, Search, DollarSign, Check, AlertTriangle, ArrowRight } from '../utils/iconWrappers';
 
@@ -255,7 +255,7 @@ const Send: React.FC = () => {
     loading, 
     error 
   } = useWallet();
-  const { contacts } = useAddressBook();
+  const { contacts } = useContacts();
   const { showToast } = useToast();
   
   // Form input states
